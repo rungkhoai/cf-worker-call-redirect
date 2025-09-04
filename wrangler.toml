@@ -1,0 +1,10 @@
+name = "call-redirect"
+main = "src/index.js"
+compatibility_date = "2025-09-04"
+
+routes = [
+  "call.rungkhoai.com/*"
+]
+
+[vars]
+# PHONE_LIST sẽ được inject từ GitHub Actions (Secrets), không để giá trị ở đây
