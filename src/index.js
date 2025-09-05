@@ -30,10 +30,10 @@ export default {
   async fetch(request, env) {
     try {
       // Lấy danh sách số từ biến môi trường (inject qua GitHub Secrets / wrangler.toml)
-      const phones = JSON.parse(env.PHONE_LIST || "[]");
+      const phones = JSON.parse(env.SALES_PHONE || "[]");
 
       if (!phones.length) {
-        return new Response("⚠️ PHONE_LIST trống hoặc chưa cấu hình.", { status: 500 });
+        return new Response("⚠️ SALES_PHONE trống hoặc chưa cấu hình.", { status: 500 });
       }
 
       // Chọn số ngẫu nhiên
