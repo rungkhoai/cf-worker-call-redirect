@@ -108,8 +108,27 @@ jobs:
 
       # -----------------------------------
       # 8. Kiểm tra và tạo/update DNS record
-      - name: Ensure DNS record exists
+      - name: Ensure DNS record exists for this Project
         run: |
-        ZONE_ID=${{ secrets.CF_ZONE_ID }}; API="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"; AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN_DNS }}"; TARGET="${{ steps.worker_name.outputs.worker_name }}.${{ steps.subdomain.outputs.subdomain }}.workers.dev"; echo "➡️ Sẽ trỏ subdomain về $TARGET"; RECORD_ID=$(curl -s -X GET "$API?type=CNAME&name=call.rungkhoai.com" -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result[0].id'); if [ "$RECORD_ID" != "null" ] && [ -n "$RECORD_ID" ]; then echo "🔄 DNS record tồn tại, cập nhật..."; curl -s -X PUT "$API/$RECORD_ID" -H "$AUTH" -H "Content-Type: application/json" --data '{"type":"CNAME","name":"call","content":"'$TARGET'","ttl":1,"proxied":true}'; else echo "➕ DNS record chưa có, tạo mới..."; curl -s -X POST "$API" -H "$AUTH" -H "Content-Type: application/json" --data '{"type":"CNAME","name":"call","content":"'$TARGET'","ttl":1,"proxied":true}'; fi
+          ZONE_ID=${{ secrets.CF_ZONE_ID }}
+          API="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"
+          AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN_DNS }}"
+          TARGET="${{ steps.worker_name.outputs.worker_name }}.${{ steps.subdomain.outputs.subdomain }}.workers.dev"
 
+          echo "➡️ Sẽ trỏ subdomain về $TARGET"
 
+          # Lấy ID record hiện tại
+          RECORD_ID=$(curl -s -X GET "$API?type=CNAME&name=call.rungkhoai.com" \
+            -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result[0].id')
+
+          if [ "$RECORD_ID" != "null" ] && [ -n "$RECORD_ID" ]; then
+            echo "🔄 DNS record tồn tại, cập nhật..."
+            curl -s -X PUT "$API/$RECORD_ID" \
+              -H "$AUTH" -H "Content-Type: application/json" \
+              --data '{"type":"CNAME","name":"call","content":"'"$TARGET"'","ttl":1,"proxied":true}'
+          else
+            echo "➕ DNS record chưa có, tạo mới..."
+            curl -s -X POST "$API" \
+              -H "$AUTH" -H "Content-Type: application/json" \
+              --data '{"type":"CNAME","name":"call","content":"'"$TARGET"'","ttl":1,"proxied":true}'
+          fi
