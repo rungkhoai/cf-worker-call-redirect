@@ -116,7 +116,6 @@ jobs:
           TARGET="${{ steps.worker_name.outputs.worker_name }}.${{ steps.subdomain.outputs.subdomain }}.workers.dev"
           echo "➡️ Sẽ trỏ subdomain về $TARGET"
 
-          # Lấy ID record hiện tại
           RECORD_ID=$(curl -s -X GET "$API?type=CNAME&name=call.rungkhoai.com" \
             -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result[0].id')
 
@@ -125,25 +124,25 @@ jobs:
             curl -s -X PUT "$API/$RECORD_ID" \
               -H "$AUTH" -H "Content-Type: application/json" \
               --data @- <<EOF
-              {
-                "type": "CNAME",
-                "name": "call",
-                "content": "$TARGET",
-                "ttl": 1,
-                "proxied": true
-              }
-              EOF
-                  else
-                    echo "➕ DNS record chưa có, tạo mới..."
-                    curl -s -X POST "$API" \
-                      -H "$AUTH" -H "Content-Type: application/json" \
-                      --data @- <<EOF
-              {
-                "type": "CNAME",
-                "name": "call",
-                "content": "$TARGET",
-                "ttl": 1,
-                "proxied": true
-              }
-              EOF
-                        fi
+{
+  "type": "CNAME",
+  "name": "call",
+  "content": "$TARGET",
+  "ttl": 1,
+  "proxied": true
+}
+EOF
+          else
+            echo "➕ DNS record chưa có, tạo mới..."
+            curl -s -X POST "$API" \
+              -H "$AUTH" -H "Content-Type: application/json" \
+              --data @- <<EOF
+{
+  "type": "CNAME",
+  "name": "call",
+  "content": "$TARGET",
+  "ttl": 1,
+  "proxied": true
+}
+EOF
+          fi
