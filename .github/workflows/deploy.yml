@@ -25,15 +25,14 @@ jobs:
           ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}
           AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN }}"
           CURRENT=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" \
-            -H "$AUTH" -H "Content-Type: application/json")
-          CURRENT_SUB=$(echo $CURRENT | jq -r '.result.subdomain')
-          if [ "$CURRENT_SUB" = "null" ] || [ -z "$CURRENT_SUB" ]; then
+            -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result.subdomain')
+          if [ "$CURRENT" = "null" ] || [ -z "$CURRENT" ]; then
             echo "⚡ Chưa có workers.dev subdomain, tiến hành bật..."
             curl -s -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" \
               -H "$AUTH" -H "Content-Type: application/json" \
-              --data '{"subdomain":"rungkhoai"}' // Chọn domain ở đây
+              --data '{"subdomain":"rungkhoai"}' # Chọn domain ở đây
           else
-            echo "✅ Subdomain đã có: $CURRENT_SUB.workers.dev"
+            echo "✅ Subdomain đã có: $CURRENT.workers.dev"
           fi
 
       - name: Get Workers.dev subdomain
@@ -45,7 +44,7 @@ jobs:
             -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result.subdomain')
           echo "subdomain=$SUBDOMAIN" >> $GITHUB_OUTPUT
 
-      - name: Ensure KV namespace exists
+      - name: Ensure KV namespace exists and patch wrangler.toml
         id: kv_namespace
         run: |
           # Kiểm tra namespace đã tồn tại chưa
@@ -61,7 +60,10 @@ jobs:
 
           echo "SALES_PHONES_NAMESPACE_ID=$NAMESPACE_ID" >> $GITHUB_ENV
           echo "::set-output name=id::$NAMESPACE_ID"
-          echo "✅ KV namespace ID đã set: $NAMESPACE_ID"
+
+          # Patch wrangler.toml: thay ${SALES_PHONES_NAMESPACE_ID} bằng ID thực
+          sed -i "s/\${SALES_PHONES_NAMESPACE_ID}/$NAMESPACE_ID/" wrangler.toml
+          echo "✅ wrangler.toml đã patch với KV namespace ID thực"
 
       - name: Deploy with Wrangler v4
         uses: cloudflare/wrangler-action@v3
@@ -69,8 +71,6 @@ jobs:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           command: deploy
-        env:
-          SALES_PHONES_NAMESPACE_ID: ${{ steps.kv_namespace.outputs.id }}
 
       - name: Ensure DNS record exists for this Project
         run: |
@@ -79,8 +79,10 @@ jobs:
           AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN_DNS }}"
           TARGET="${{ steps.worker_name.outputs.worker_name }}.${{ steps.subdomain.outputs.subdomain }}.workers.dev"
           echo "➡️ Sẽ trỏ subdomain về $TARGET"
+
           RECORD_ID=$(curl -s -X GET "$API?type=CNAME&name=call.rungkhoai.com" \
             -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result[0].id')
+
           if [ "$RECORD_ID" != "null" ] && [ -n "$RECORD_ID" ]; then
             echo "🔄 DNS record tồn tại, cập nhật..."
             curl -s -X PUT "$API/$RECORD_ID" \
