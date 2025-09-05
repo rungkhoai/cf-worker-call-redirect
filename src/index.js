@@ -1,4 +1,5 @@
 // File: src/index.js
+/*
 export default {
   async fetch(request, env, ctx) {
     try {
@@ -8,6 +9,7 @@ export default {
     }
   }
 }
+*/
 /*
 export default {
   async fetch(request, env) {
@@ -23,3 +25,25 @@ export default {
   }
 }
 */
+// File: src/index.js
+export default {
+  async fetch(request, env) {
+    try {
+      // Lấy danh sách số từ biến môi trường (inject qua GitHub Secrets / wrangler.toml)
+      const phones = JSON.parse(env.PHONE_LIST || "[]");
+
+      if (!phones.length) {
+        return new Response("⚠️ PHONE_LIST trống hoặc chưa cấu hình.", { status: 500 });
+      }
+
+      // Chọn số ngẫu nhiên
+      const random = Math.floor(Math.random() * phones.length);
+      const phoneNumber = phones[random];
+
+      return Response.redirect(`tel:${phoneNumber}`, 301);
+    } catch (e) {
+      return new Response("Lỗi Worker: " + e.message, { status: 500 });
+    }
+  }
+};
+
