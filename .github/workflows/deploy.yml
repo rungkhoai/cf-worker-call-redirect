@@ -123,26 +123,26 @@ jobs:
             echo "🔄 DNS record tồn tại, cập nhật..."
             curl -s -X PUT "$API/$RECORD_ID" \
               -H "$AUTH" -H "Content-Type: application/json" \
-              --data @- <<EOF
-{
-  "type": "CNAME",
-  "name": "call",
-  "content": "$TARGET",
-  "ttl": 1,
-  "proxied": true
-}
-EOF
-          else
-            echo "➕ DNS record chưa có, tạo mới..."
+              --data @- <<'EOF'
+             {
+              "type": "CNAME",
+              "name": "call",
+              "content": "'"$TARGET"'",
+              "ttl": 1,
+              "proxied": true
+             }
+             EOF
+              else
+              echo "➕ DNS record chưa có, tạo mới..."
             curl -s -X POST "$API" \
               -H "$AUTH" -H "Content-Type: application/json" \
-              --data @- <<EOF
-{
-  "type": "CNAME",
-  "name": "call",
-  "content": "$TARGET",
-  "ttl": 1,
-  "proxied": true
-}
-EOF
-          fi
+              --data @- <<'EOF'
+             {
+               "type": "CNAME",
+               "name": "call",
+               "content": "'"$TARGET"'",
+               "ttl": 1,
+               "proxied": true
+             }
+             EOF
+             fi
