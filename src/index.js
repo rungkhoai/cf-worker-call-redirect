@@ -1,16 +1,19 @@
+// File: src/index.js
+// Worker lấy số điện thoại ngẫu nhiên từ CSV Google Sheet, lưu cache trong KV
+
 export default {
   async fetch(request, env, ctx) {
     const KV = env.SALES_PHONES; // KV binding từ wrangler.toml
     const SHEET_CSV_URL = env.CSV_SALES_PHONE; // URL CSV Google Sheet
-    const STATUS = [];
+    const STATUS = []; // Mảng lưu log trạng thái các bước
 
     try {
       STATUS.push("Bắt đầu xử lý...");
 
-      // Lấy cache từ KV
+      // --- Lấy cache từ KV ---
       const [cachedPhonesStr, cachedTSStr] = await Promise.all([
-        KV.get("phones"),
-        KV.get("phones_ts"),
+        KV.get("phones"), // danh sách số điện thoại đã cache
+        KV.get("phones_ts"), // timestamp cache
       ]);
       const cachedPhones = cachedPhonesStr ? JSON.parse(cachedPhonesStr) : [];
       const cachedTS = cachedTSStr ? parseInt(cachedTSStr) : 0;
@@ -18,20 +21,25 @@ export default {
 
       STATUS.push(`Lấy dữ liệu từ KV: ${cachedPhones.length} số`);
 
-      // Hàm fetch CSV Google Sheet và lưu vào KV
+      // --- Hàm fetch CSV từ Google Sheet và lưu vào KV ---
       const fetchAndCache = async () => {
         STATUS.push("Fetch CSV từ Google Sheet...");
         const res = await fetch(SHEET_CSV_URL);
         if (!res.ok) throw new Error("Không fetch được CSV");
         const csvText = await res.text();
-        const lines = csvText.split("\n").slice(1); // bỏ header
+
+        // Bỏ header, lấy cột số điện thoại (giả sử cột 2)
+        const lines = csvText.split("\n").slice(1);
         const phones = lines
           .map((line) => line.split(",")[1]?.trim().replace(/[.\s]/g, ""))
           .filter(Boolean);
+
+        // Lưu cache KV
         await Promise.all([
           KV.put("phones", JSON.stringify(phones)),
           KV.put("phones_ts", Date.now().toString()),
         ]);
+
         STATUS.push(`Đã lưu ${phones.length} số vào KV`);
         return phones;
       };
@@ -48,41 +56,51 @@ export default {
 
       if (!phonesToUse.length) {
         return new Response(
-          "<h1>⚠️ Không có số điện thoại trong CSV.</h1><pre>" +
-            STATUS.join("\n") +
-            "</pre>",
-          { status: 500, headers: { "Content-Type": "text/html" } }
+          `<html><head><meta charset="UTF-8"></head>
+          <body>
+            <h1>⚠️ Không có số điện thoại trong CSV.</h1>
+            <pre>${STATUS.join("\n")}</pre>
+          </body></html>`,
+          {
+            status: 500,
+            headers: { "Content-Type": "text/html; charset=UTF-8" },
+          }
         );
       }
 
-      // Chọn số ngẫu nhiên
+      // --- Chọn số ngẫu nhiên ---
       const random = Math.floor(Math.random() * phonesToUse.length);
       const phoneNumber = phonesToUse[random];
-
       STATUS.push(`Số điện thoại được chọn: ${phoneNumber}`);
 
-      // Trả về trang HTML thay vì redirect
+      // --- Trả về trang HTML hiển thị số và nút gọi ---
       return new Response(
-        `
-          <html>
-            <body>
-              <h1>Số điện thoại ngẫu nhiên</h1>
-              <p>${phoneNumber}</p>
-              <a href="tel:${phoneNumber}">
-                <button>Nhấn để gọi</button>
-              </a>
-              <h2>DEBUG</h2>
-              <pre>${STATUS.join("\n")}</pre>
-            </body>
-          </html>
-        `,
-        { headers: { "Content-Type": "text/html" } }
+        `<html>
+          <head>
+            <meta charset="UTF-8">
+            <title>Số điện thoại ngẫu nhiên</title>
+          </head>
+          <body>
+            <h1>Số điện thoại ngẫu nhiên</h1>
+            <p>${phoneNumber}</p>
+            <a href="tel:${phoneNumber}">
+              <button>Nhấn để gọi</button>
+            </a>
+            <h2>DEBUG</h2>
+            <pre>${STATUS.join("\n")}</pre>
+          </body>
+        </html>`,
+        { headers: { "Content-Type": "text/html; charset=UTF-8" } }
       );
     } catch (e) {
-      return new Response("<h1>Lỗi Worker:</h1><pre>" + e.message + "</pre>", {
-        status: 500,
-        headers: { "Content-Type": "text/html" },
-      });
+      return new Response(
+        `<html><head><meta charset="UTF-8"></head>
+        <body>
+          <h1>Lỗi Worker:</h1>
+          <pre>${e.message}</pre>
+        </body></html>`,
+        { status: 500, headers: { "Content-Type": "text/html; charset=UTF-8" } }
+      );
     }
   },
 };
