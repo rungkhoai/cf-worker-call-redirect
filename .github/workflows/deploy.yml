@@ -13,6 +13,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # -----------------------------------
+      # Setup Node.js và Wrangler v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Install Wrangler v4
+        run: npm install --save-dev wrangler@4
+
+      # -----------------------------------
+      # Lấy Worker name từ wrangler.toml
       - name: Get Worker name from wrangler.toml
         id: worker_name
         run: |
@@ -20,6 +32,8 @@ jobs:
           echo "worker_name=$NAME" >> $GITHUB_OUTPUT
           echo "✅ Worker name đã lấy: $NAME"
 
+      # -----------------------------------
+      # Kiểm tra Workers.dev subdomain
       - name: Ensure Workers.dev subdomain enabled
         run: |
           ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}
@@ -44,34 +58,39 @@ jobs:
             -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result.subdomain')
           echo "subdomain=$SUBDOMAIN" >> $GITHUB_OUTPUT
 
-      - name: Ensure KV namespace exists and patch wrangler.toml
+      # -----------------------------------
+      # Kiểm tra và tạo KV namespace SALES_PHONES
+      - name: Ensure KV namespace exists
         id: kv_namespace
         run: |
-          # Kiểm tra namespace đã tồn tại chưa
-          EXISTING_ID=$(wrangler kv:namespace list --json | jq -r '.[] | select(.title=="SALES_PHONES") | .id')
-
+          EXISTING_ID=$(npx wrangler kv:namespace list --json | jq -r '.[] | select(.title=="SALES_PHONES") | .id')
           if [ -z "$EXISTING_ID" ]; then
             echo "➕ KV namespace SALES_PHONES chưa có, tạo mới..."
-            NAMESPACE_ID=$(wrangler kv:namespace create "SALES_PHONES" --json | jq -r '.id')
+            NAMESPACE_ID=$(npx wrangler kv:namespace create "SALES_PHONES" --json | jq -r '.id')
           else
             echo "✅ KV namespace SALES_PHONES đã có: $EXISTING_ID"
             NAMESPACE_ID=$EXISTING_ID
           fi
-
           echo "SALES_PHONES_NAMESPACE_ID=$NAMESPACE_ID" >> $GITHUB_ENV
           echo "::set-output name=id::$NAMESPACE_ID"
 
-          # Patch wrangler.toml: thay ${SALES_PHONES_NAMESPACE_ID} bằng ID thực
-          sed -i "s/\${SALES_PHONES_NAMESPACE_ID}/$NAMESPACE_ID/" wrangler.toml
-          echo "✅ wrangler.toml đã patch với KV namespace ID thực"
+      # -----------------------------------
+      # Patch wrangler.toml với ID thực
+      - name: Patch wrangler.toml KV ID
+        run: |
+          sed -i "s/\${SALES_PHONES_NAMESPACE_ID}/$SALES_PHONES_NAMESPACE_ID/" wrangler.toml
+          echo "✅ wrangler.toml đã được patch với KV namespace ID thực"
 
-      - name: Deploy with Wrangler v4
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CF_API_TOKEN }}
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
-          command: deploy
+      # -----------------------------------
+      # Deploy Worker với Wrangler v4
+      - name: Deploy Worker with Wrangler v4
+        run: npx wrangler deploy
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
 
+      # -----------------------------------
+      # Kiểm tra và tạo/update DNS record
       - name: Ensure DNS record exists for this Project
         run: |
           ZONE_ID=${{ secrets.CF_ZONE_ID }}
@@ -79,10 +98,8 @@ jobs:
           AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN_DNS }}"
           TARGET="${{ steps.worker_name.outputs.worker_name }}.${{ steps.subdomain.outputs.subdomain }}.workers.dev"
           echo "➡️ Sẽ trỏ subdomain về $TARGET"
-
           RECORD_ID=$(curl -s -X GET "$API?type=CNAME&name=call.rungkhoai.com" \
             -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result[0].id')
-
           if [ "$RECORD_ID" != "null" ] && [ -n "$RECORD_ID" ]; then
             echo "🔄 DNS record tồn tại, cập nhật..."
             curl -s -X PUT "$API/$RECORD_ID" \
@@ -105,4 +122,3 @@ jobs:
                 \"ttl\":1,
                 \"proxied\":true
               }"
-          fi
