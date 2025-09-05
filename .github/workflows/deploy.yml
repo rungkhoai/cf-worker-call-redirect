@@ -19,6 +19,23 @@ jobs:
           NAME=$(grep '^name =' wrangler.toml | cut -d '"' -f2)
           echo "worker_name=$NAME" >> $GITHUB_OUTPUT
 
+      - name: Ensure Workers.dev subdomain enabled
+        run: |
+          ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}
+          AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN }}"
+
+          CURRENT=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" \
+            -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result.subdomain')
+
+          if [ "$CURRENT" = "null" ] || [ -z "$CURRENT" ]; then
+            echo "⚡ Chưa có workers.dev subdomain, tiến hành bật..."
+            curl -s -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" \
+              -H "$AUTH" -H "Content-Type: application/json" \
+              --data '{"subdomain":"rungkhoai"}' // Chọn domain ở đây
+          else
+            echo "✅ Subdomain đã có: $CURRENT.workers.dev"
+          fi
+
       - name: Get Workers.dev subdomain
         id: subdomain
         run: |
