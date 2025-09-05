@@ -1,3 +1,4 @@
+# File: .github/workflows/deploy.yml
 name: Deploy Worker
 
 on:
@@ -12,6 +13,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Get Worker name from wrangler.toml
+        id: worker_name
+        run: |
+          NAME=$(grep '^name =' wrangler.toml | cut -d '"' -f2)
+          echo "worker_name=$NAME" >> $GITHUB_OUTPUT
+
+      - name: Get Workers.dev subdomain
+        id: subdomain
+        run: |
+          ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}
+          AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN }}"
+          SUBDOMAIN=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" \
+            -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result.subdomain')
+          echo "subdomain=$SUBDOMAIN" >> $GITHUB_OUTPUT
+
       - name: Deploy with Wrangler v4
         uses: cloudflare/wrangler-action@v3
         with:
@@ -19,11 +35,15 @@ jobs:
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           command: deploy
 
-      - name: Ensure DNS record exists for call.rungkhoai.com
+      - name: Ensure DNS record exists for this Project
         run: |
           ZONE_ID=${{ secrets.CF_ZONE_ID }}
           API="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"
           AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN_DNS }}"
+
+          TARGET="${{ steps.worker_name.outputs.worker_name }}.${{ steps.subdomain.outputs.subdomain }}.workers.dev"
+
+          echo "➡️ Sẽ trỏ subdomain về $TARGET"
 
           # 1. Kiểm tra DNS đã tồn tại chưa
           RECORD_ID=$(curl -s -X GET "$API?type=CNAME&name=call.rungkhoai.com" \
@@ -34,22 +54,22 @@ jobs:
             echo "🔄 DNS record tồn tại, cập nhật..."
             curl -s -X PUT "$API/$RECORD_ID" \
               -H "$AUTH" -H "Content-Type: application/json" \
-              --data '{
-                "type":"CNAME",
-                "name":"call",
-                "content":"rungkhoai.com",
-                "ttl":1,
-                "proxied":true
-              }'
+              --data "{
+                \"type\":\"CNAME\",
+                \"name\":\"call\",
+                \"content\":\"$TARGET\",
+                \"ttl\":1,
+                \"proxied\":true
+              }"
           else
             echo "➕ DNS record chưa có, tạo mới..."
             curl -s -X POST "$API" \
               -H "$AUTH" -H "Content-Type: application/json" \
-              --data '{
-                "type":"CNAME",
-                "name":"call",
-                "content":"rungkhoai.com",
-                "ttl":1,
-                "proxied":true
-              }'
+              --data "{
+                \"type\":\"CNAME\",
+                \"name\":\"call\",
+                \"content\":\"$TARGET\",
+                \"ttl\":1,
+                \"proxied\":true
+              }"
           fi
