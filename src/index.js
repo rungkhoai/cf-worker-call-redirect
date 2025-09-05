@@ -109,58 +109,77 @@ export default {
 // File: src/index.js
 // Worker debug: hiển thị URL CSV Google Sheet lấy từ env
 
+// File: src/index.js
 export default {
-  async fetch(request, env) {
-    const SHEET_CSV_URL = env.CSV_SALES_PHONE; // URL CSV từ env
+  async fetch(request, env, ctx) {
+    const KV = env.SALES_PHONES;
+    const STATUS = [];
 
     try {
-      if (!SHEET_CSV_URL) {
-        return new Response(
-          `<html>
-            <head><meta charset="UTF-8"><title>Debug CSV URL</title></head>
-            <body>
-              <h1>⚠️ CSV URL chưa được đặt!</h1>
-              <p>Biến môi trường CSV_SALES_PHONE hiện undefined</p>
-            </body>
-          </html>`,
-          { headers: { "Content-Type": "text/html; charset=UTF-8" } }
-        );
+      STATUS.push("Bắt đầu xử lý...");
+
+      // Lấy URL CSV từ KV hoặc từ env nếu lần đầu
+      let csvUrl = await KV.get("csv_url");
+      if (!csvUrl) {
+        csvUrl = env.CSV_SALES_PHONE;
+        await KV.put("csv_url", csvUrl);
+        STATUS.push(`Lưu URL CSV vào KV: ${csvUrl}`);
+      } else {
+        STATUS.push(`Đã có URL CSV trong KV: ${csvUrl}`);
       }
 
-      return new Response(
-        `<html>
-          <head><meta charset="UTF-8"><title>Debug CSV URL</title></head>
-          <body>
-            <h1>✅ CSV URL đã lấy thành công!</h1>
-            <p>CSV_SALES_PHONE = <strong>${SHEET_CSV_URL}</strong></p>
-            <p>Test fetch trực tiếp:</p>
-            <pre id="fetchResult">Đang fetch...</pre>
+      // Lấy cache số điện thoại
+      const [phonesStr, tsStr] = await Promise.all([KV.get("phones"), KV.get("phones_ts")]);
+      let phones = phonesStr ? JSON.parse(phonesStr) : [];
+      const ts = tsStr ? parseInt(tsStr) : 0;
+      const now = Date.now();
 
-            <script>
-              fetch("${SHEET_CSV_URL}")
-                .then(res => res.text())
-                .then(txt => {
-                  document.getElementById('fetchResult').textContent = txt.slice(0, 500) + (txt.length > 500 ? "\\n... (cắt bớt)" : "");
-                })
-                .catch(err => {
-                  document.getElementById('fetchResult').textContent = "Lỗi fetch: " + err;
-                });
-            </script>
-          </body>
-        </html>`,
-        { headers: { "Content-Type": "text/html; charset=UTF-8" } }
-      );
+      STATUS.push(`Lấy số điện thoại từ KV: ${phones.length} số`);
+
+      // Nếu cache trống hoặc >4h, fetch CSV mới
+      if (!phones.length || now - ts >= 4 * 60 * 60 * 1000) {
+        STATUS.push("Cache hết hạn hoặc trống, fetch CSV từ Google Sheet...");
+        const res = await fetch(csvUrl);
+        if (!res.ok) throw new Error("Không fetch được CSV");
+        const csvText = await res.text();
+        const lines = csvText.split("\n").slice(1);
+        phones = lines
+          .map(l => l.split(",")[1]?.trim().replace(/[.\s]/g, ""))
+          .filter(Boolean);
+        await Promise.all([
+          KV.put("phones", JSON.stringify(phones)),
+          KV.put("phones_ts", Date.now().toString())
+        ]);
+        STATUS.push(`Đã lưu ${phones.length} số vào KV`);
+      }
+
+      if (!phones.length) {
+        return new Response(`<html><head><meta charset="UTF-8"></head>
+          <body><h1>⚠️ Không có số điện thoại</h1>
+          <pre>${STATUS.join("\n")}</pre></body></html>`,
+          { status: 500, headers: { "Content-Type": "text/html; charset=UTF-8" } });
+      }
+
+      // Chọn số ngẫu nhiên
+      const randomPhone = phones[Math.floor(Math.random() * phones.length)];
+      STATUS.push(`Số điện thoại được chọn: ${randomPhone}`);
+
+      return new Response(`<html>
+        <head><meta charset="UTF-8"><title>Số điện thoại</title></head>
+        <body>
+          <h1>Số điện thoại ngẫu nhiên</h1>
+          <p>${randomPhone}</p>
+          <a href="tel:${randomPhone}"><button>Nhấn để gọi</button></a>
+          <h2>DEBUG</h2>
+          <pre>${STATUS.join("\n")}</pre>
+        </body>
+      </html>`,
+      { headers: { "Content-Type": "text/html; charset=UTF-8" } });
+
     } catch (e) {
-      return new Response(
-        `<html>
-          <head><meta charset="UTF-8"></head>
-          <body>
-            <h1>Lỗi Worker:</h1>
-            <pre>${e.message}</pre>
-          </body>
-        </html>`,
-        { status: 500, headers: { "Content-Type": "text/html; charset=UTF-8" } }
-      );
+      return new Response(`<html><head><meta charset="UTF-8"></head>
+        <body><h1>Lỗi Worker:</h1><pre>${e.message}</pre></body></html>`,
+        { status: 500, headers: { "Content-Type": "text/html; charset=UTF-8" } });
     }
-  },
+  }
 };

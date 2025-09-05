@@ -92,6 +92,14 @@ jobs:
           echo "id=$NAMESPACE_ID" >> $GITHUB_OUTPUT
 
       # -----------------------------------
+      # Kiểm tra secret CSV_SALES_PHONE
+      - name: Check CSV_SALES_PHONE secret
+        run: |
+          echo "CSV_SALES_PHONE preview: ${CSV_SALES_PHONE:0:10}..."
+        env:
+          CSV_SALES_PHONE: ${{ secrets.CSV_SALES_PHONE }}
+
+      # -----------------------------------
       # 6. Patch wrangler.toml với ID thực
       - name: Patch wrangler.toml KV ID
         run: |
