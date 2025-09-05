@@ -1,6 +1,7 @@
 // File: src/index.js
 // Worker lấy số điện thoại ngẫu nhiên từ CSV Google Sheet, lưu cache trong KV
 
+/*
 export default {
   async fetch(request, env, ctx) {
     const KV = env.SALES_PHONES; // KV binding từ wrangler.toml
@@ -99,6 +100,65 @@ export default {
           <h1>Lỗi Worker:</h1>
           <pre>${e.message}</pre>
         </body></html>`,
+        { status: 500, headers: { "Content-Type": "text/html; charset=UTF-8" } }
+      );
+    }
+  },
+};
+*/
+// File: src/index.js
+// Worker debug: hiển thị URL CSV Google Sheet lấy từ env
+
+export default {
+  async fetch(request, env) {
+    const SHEET_CSV_URL = env.CSV_SALES_PHONE; // URL CSV từ env
+
+    try {
+      if (!SHEET_CSV_URL) {
+        return new Response(
+          `<html>
+            <head><meta charset="UTF-8"><title>Debug CSV URL</title></head>
+            <body>
+              <h1>⚠️ CSV URL chưa được đặt!</h1>
+              <p>Biến môi trường CSV_SALES_PHONE hiện undefined</p>
+            </body>
+          </html>`,
+          { headers: { "Content-Type": "text/html; charset=UTF-8" } }
+        );
+      }
+
+      return new Response(
+        `<html>
+          <head><meta charset="UTF-8"><title>Debug CSV URL</title></head>
+          <body>
+            <h1>✅ CSV URL đã lấy thành công!</h1>
+            <p>CSV_SALES_PHONE = <strong>${SHEET_CSV_URL}</strong></p>
+            <p>Test fetch trực tiếp:</p>
+            <pre id="fetchResult">Đang fetch...</pre>
+
+            <script>
+              fetch("${SHEET_CSV_URL}")
+                .then(res => res.text())
+                .then(txt => {
+                  document.getElementById('fetchResult').textContent = txt.slice(0, 500) + (txt.length > 500 ? "\\n... (cắt bớt)" : "");
+                })
+                .catch(err => {
+                  document.getElementById('fetchResult').textContent = "Lỗi fetch: " + err;
+                });
+            </script>
+          </body>
+        </html>`,
+        { headers: { "Content-Type": "text/html; charset=UTF-8" } }
+      );
+    } catch (e) {
+      return new Response(
+        `<html>
+          <head><meta charset="UTF-8"></head>
+          <body>
+            <h1>Lỗi Worker:</h1>
+            <pre>${e.message}</pre>
+          </body>
+        </html>`,
         { status: 500, headers: { "Content-Type": "text/html; charset=UTF-8" } }
       );
     }
