@@ -11,12 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # -----------------------------------
-      # 1. Checkout code
+      # Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
       # -----------------------------------
-      # 2. Setup Node.js và Wrangler v4
+      # Setup Node.js và Wrangler v4
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -26,79 +26,36 @@ jobs:
         run: npm install --save-dev wrangler@4
 
       # -----------------------------------
-      # 3. Lấy Worker name từ wrangler.toml
+      # Lấy Worker name từ wrangler.toml
       - name: Get Worker name from wrangler.toml
         id: worker_name
-        run: |
-          NAME=$(grep '^name =' wrangler.toml | cut -d '"' -f2)
-          echo "worker_name=$NAME" >> $GITHUB_OUTPUT
-          echo "✅ Worker name đã lấy: $NAME"
+        run: NAME=$(grep '^name =' wrangler.toml | cut -d '"' -f2) && echo "worker_name=$NAME" >> $GITHUB_OUTPUT && echo "✅ Worker name đã lấy: $NAME"
 
       # -----------------------------------
-      # 4. Kiểm tra Workers.dev subdomain
+      # Kiểm tra Workers.dev subdomain
       - name: Ensure Workers.dev subdomain enabled
         run: |
-          ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}
-          AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN }}"
-          CURRENT=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" \
-            -H "$AUTH" -H "Content-Type: application/json")
-          SUBDOMAIN=$(echo "$CURRENT" | jq -r '.result.subdomain')
-          if [ "$SUBDOMAIN" = "null" ] || [ -z "$SUBDOMAIN" ]; then
-            echo "⚡ Chưa có workers.dev subdomain, tạo mới..."
-            curl -s -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" \
-              -H "$AUTH" -H "Content-Type: application/json" \
-              --data '{"subdomain":"rungkhoai"}' # Chọn domain ở đây
-          else
-            echo "✅ Subdomain đã có: $SUBDOMAIN.workers.dev"
-          fi
+          ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}; AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN }}"; CURRENT=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" -H "$AUTH" -H "Content-Type: application/json"); SUBDOMAIN=$(echo "$CURRENT" | jq -r '.result.subdomain'); if [ "$SUBDOMAIN" = "null" ] || [ -z "$SUBDOMAIN" ]; then echo "⚡ Chưa có workers.dev subdomain, bật..."; curl -s -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" -H "$AUTH" -H "Content-Type: application/json" --data '{"subdomain":"rungkhoai"}'; else echo "✅ Subdomain đã có: $SUBDOMAIN.workers.dev"; fi
 
+      # -----------------------------------
+      # Lấy lại subdomain
       - name: Get Workers.dev subdomain
         id: subdomain
-        run: |
-          ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}
-          AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN }}"
-          SUBDOMAIN=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" \
-            -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result.subdomain')
-          echo "subdomain=$SUBDOMAIN" >> $GITHUB_OUTPUT
+        run: ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}; AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN }}"; SUBDOMAIN=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result.subdomain'); echo "subdomain=$SUBDOMAIN" >> $GITHUB_OUTPUT
 
       # -----------------------------------
-      # 5. Kiểm tra và tạo KV namespace SALES_PHONES
+      # Kiểm tra và tạo KV namespace SALES_PHONES
       - name: Ensure KV namespace exists
         id: kv_namespace
-        run: |
-          ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}
-          TOKEN=${{ secrets.CF_API_TOKEN }}
-
-          # Lấy danh sách namespaces
-          EXISTING=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces" \
-            -H "Authorization: Bearer $TOKEN" \
-            -H "Content-Type: application/json")
-
-          NAMESPACE_ID=$(echo "$EXISTING" | jq -r '.result[] | select(.title=="SALES_PHONES") | .id')
-
-          if [ -z "$NAMESPACE_ID" ] || [ "$NAMESPACE_ID" = "null" ]; then
-            echo "➕ KV namespace SALES_PHONES chưa có, tạo mới..."
-            CREATED=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces" \
-              -H "Authorization: Bearer $TOKEN" \
-              -H "Content-Type: application/json" \
-              --data '{"title":"SALES_PHONES"}')
-            NAMESPACE_ID=$(echo "$CREATED" | jq -r '.result.id')
-          else
-            echo "✅ KV namespace SALES_PHONES đã có: $NAMESPACE_ID"
-          fi
-
-          echo "SALES_PHONES_NAMESPACE_ID=$NAMESPACE_ID" >> $GITHUB_ENV
-          echo "id=$NAMESPACE_ID" >> $GITHUB_OUTPUT
+        run: ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}; TOKEN=${{ secrets.CF_API_TOKEN }}; EXISTING=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json"); NAMESPACE_ID=$(echo "$EXISTING" | jq -r '.result[] | select(.title=="SALES_PHONES") | .id'); if [ -z "$NAMESPACE_ID" ] || [ "$NAMESPACE_ID" = "null" ]; then echo "➕ Tạo mới KV namespace SALES_PHONES"; CREATED=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" --data '{"title":"SALES_PHONES"}'); NAMESPACE_ID=$(echo "$CREATED" | jq -r '.result.id'); else echo "✅ KV namespace SALES_PHONES đã có: $NAMESPACE_ID"; fi; echo "SALES_PHONES_NAMESPACE_ID=$NAMESPACE_ID" >> $GITHUB_ENV; echo "id=$NAMESPACE_ID" >> $GITHUB_OUTPUT
 
       # -----------------------------------
-      # 6. Patch wrangler.toml với ID thực
+      # Patch wrangler.toml với ID thực
       - name: Patch wrangler.toml KV ID
-        run: |
-          sed -i "s/\${SALES_PHONES_NAMESPACE_ID}/$SALES_PHONES_NAMESPACE_ID/" wrangler.toml
-          echo "✅ wrangler.toml đã được patch với KV namespace ID thực"
+        run: sed -i "s/\${SALES_PHONES_NAMESPACE_ID}/$SALES_PHONES_NAMESPACE_ID/" wrangler.toml && echo "✅ wrangler.toml đã patch KV namespace ID thực"
 
       # -----------------------------------
-      # 7. Deploy Worker với Wrangler v4
+      # Deploy Worker với Wrangler v4
       - name: Deploy Worker with Wrangler v4
         run: npx wrangler deploy
         env:
@@ -107,42 +64,6 @@ jobs:
           SALES_PHONES_NAMESPACE_ID: ${{ steps.kv_namespace.outputs.id }}
 
       # -----------------------------------
-      # 8. Kiểm tra và tạo/update DNS record
-      - name: Ensure DNS record exists for this Project
-        run: |
-          ZONE_ID=${{ secrets.CF_ZONE_ID }}
-          API="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"
-          AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN_DNS }}"
-          TARGET="${{ steps.worker_name.outputs.worker_name }}.${{ steps.subdomain.outputs.subdomain }}.workers.dev"
-          echo "➡️ Sẽ trỏ subdomain về $TARGET"
-
-          RECORD_ID=$(curl -s -X GET "$API?type=CNAME&name=call.rungkhoai.com" \
-            -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result[0].id')
-
-          if [ "$RECORD_ID" != "null" ] && [ -n "$RECORD_ID" ]; then
-            echo "🔄 DNS record tồn tại, cập nhật..."
-            curl -s -X PUT "$API/$RECORD_ID" \
-              -H "$AUTH" -H "Content-Type: application/json" \
-              --data @- <<'EOF'
-             {
-              "type": "CNAME",
-              "name": "call",
-              "content": "'"$TARGET"'",
-              "ttl": 1,
-              "proxied": true
-             }
-             'EOF'
-              else
-              echo "➕ DNS record chưa có, tạo mới..."
-            curl -s -X POST "$API" \
-              -H "$AUTH" -H "Content-Type: application/json" \
-              --data @- <<'EOF'
-             {
-               "type": "CNAME",
-               "name": "call",
-               "content": "'"$TARGET"'",
-               "ttl": 1,
-               "proxied": true
-             }
-             'EOF'
-            fi
+      # Kiểm tra và tạo/update DNS record
+      - name: Ensure DNS record exists
+        run: ZONE_ID=${{ secrets.CF_ZONE_ID }}; API="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"; AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN_DNS }}"; TARGET="${{ steps.worker_name.outputs.worker_name }}.${{ steps.subdomain.outputs.subdomain }}.workers.dev"; echo "➡️ Sẽ trỏ subdomain về $TARGET"; RECORD_ID=$(curl -s -X GET "$API?type=CNAME&name=call.rungkhoai.com" -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result[0].id'); if [ "$RECORD_ID" != "null" ] && [ -n "$RECORD_ID" ]; then echo "🔄 DNS record tồn tại, cập nhật..."; curl -s -X PUT "$API/$RECORD_ID" -H "$AUTH" -H "Content-Type: application/json" --data '{"type":"CNAME","name":"call","content":"'$TARGET'","ttl":1,"proxied":true}'; else echo "➕ DNS record chưa có, tạo mới..."; curl -s -X POST "$API" -H "$AUTH" -H "Content-Type: application/json" --data '{"type":"CNAME","name":"call","content":"'$TARGET'","ttl":1,"proxied":true}'; fi
