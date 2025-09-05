@@ -105,6 +105,7 @@ jobs:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           SALES_PHONES_NAMESPACE_ID: ${{ steps.kv_namespace.outputs.id }}
+          CSV_SALES_PHONE: ${{ secrets.CSV_SALES_PHONE }}
 
       # -----------------------------------
       # 8. Kiểm tra và tạo/update DNS record
