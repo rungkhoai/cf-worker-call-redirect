@@ -131,7 +131,7 @@ jobs:
               "ttl": 1,
               "proxied": true
              }
-             EOF
+             'EOF'
               else
               echo "➕ DNS record chưa có, tạo mới..."
             curl -s -X POST "$API" \
@@ -144,5 +144,5 @@ jobs:
                "ttl": 1,
                "proxied": true
              }
-             EOF
-             fi
+             'EOF'
+            fi
