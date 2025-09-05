@@ -10,6 +10,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # -----------------------------------
+      # Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -39,14 +41,15 @@ jobs:
           ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}
           AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN }}"
           CURRENT=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" \
-            -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result.subdomain')
-          if [ "$CURRENT" = "null" ] || [ -z "$CURRENT" ]; then
+            -H "$AUTH" -H "Content-Type: application/json")
+          SUBDOMAIN=$(echo "$CURRENT" | jq -r '.result.subdomain')
+          if [ "$SUBDOMAIN" = "null" ] || [ -z "$SUBDOMAIN" ]; then
             echo "⚡ Chưa có workers.dev subdomain, tiến hành bật..."
             curl -s -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" \
               -H "$AUTH" -H "Content-Type: application/json" \
               --data '{"subdomain":"rungkhoai"}' # Chọn domain ở đây
           else
-            echo "✅ Subdomain đã có: $CURRENT.workers.dev"
+            echo "✅ Subdomain đã có: $SUBDOMAIN.workers.dev"
           fi
 
       - name: Get Workers.dev subdomain
@@ -72,7 +75,7 @@ jobs:
             NAMESPACE_ID=$EXISTING_ID
           fi
           echo "SALES_PHONES_NAMESPACE_ID=$NAMESPACE_ID" >> $GITHUB_ENV
-          echo "::set-output name=id::$NAMESPACE_ID"
+          echo "id=$NAMESPACE_ID" >> $GITHUB_OUTPUT
 
       # -----------------------------------
       # Patch wrangler.toml với ID thực
@@ -88,6 +91,7 @@ jobs:
         env:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          SALES_PHONES_NAMESPACE_ID: ${{ steps.kv_namespace.outputs.id }}
 
       # -----------------------------------
       # Kiểm tra và tạo/update DNS record
