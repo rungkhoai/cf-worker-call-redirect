@@ -9,3 +9,7 @@ routes = [
 
 [vars]
 # PHONE_LIST sẽ được inject từ GitHub Actions (Secrets), không để giá trị ở đây
+
+kv_namespaces = [
+  { binding = "SALES_PHONES", id = "${SALES_PHONES_NAMESPACE_ID}" }
+]

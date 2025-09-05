@@ -45,12 +45,29 @@ jobs:
             -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result.subdomain')
           echo "subdomain=$SUBDOMAIN" >> $GITHUB_OUTPUT
 
+      - name: Ensure KV namespace exists
+        id: kv_namespace
+        run: |
+          # Kiểm tra namespace đã tồn tại chưa
+          EXISTING_ID=$(wrangler kv:namespace list --json | jq -r '.[] | select(.title=="SALES_PHONES") | .id')
+
+          if [ -z "$EXISTING_ID" ]; then
+            echo "➕ KV namespace SALES_PHONES chưa có, tạo mới..."
+            NAMESPACE_ID=$(wrangler kv:namespace create "SALES_PHONES" --json | jq -r '.id')
+            echo "SALES_PHONES_NAMESPACE_ID=$NAMESPACE_ID" >> $GITHUB_ENV
+          else
+            echo "✅ KV namespace SALES_PHONES đã có: $EXISTING_ID"
+            echo "SALES_PHONES_NAMESPACE_ID=$EXISTING_ID" >> $GITHUB_ENV
+          fi
+
       - name: Deploy with Wrangler v4
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           command: deploy
+        env:
+          SALES_PHONES_NAMESPACE_ID: ${{ env.SALES_PHONES_NAMESPACE_ID }}
 
       - name: Ensure DNS record exists for this Project
         run: |
