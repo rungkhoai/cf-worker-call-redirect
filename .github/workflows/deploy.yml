@@ -44,7 +44,7 @@ jobs:
             -H "$AUTH" -H "Content-Type: application/json")
           SUBDOMAIN=$(echo "$CURRENT" | jq -r '.result.subdomain')
           if [ "$SUBDOMAIN" = "null" ] || [ -z "$SUBDOMAIN" ]; then
-            echo "⚡ Chưa có workers.dev subdomain, tiến hành bật..."
+            echo "⚡ Chưa có workers.dev subdomain, tạo mới..."
             curl -s -X PUT "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" \
               -H "$AUTH" -H "Content-Type: application/json" \
               --data '{"subdomain":"rungkhoai"}' # Chọn domain ở đây
@@ -68,15 +68,14 @@ jobs:
         run: |
           ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}
           TOKEN=${{ secrets.CF_API_TOKEN }}
-          
-          # Lấy danh sách namespace hiện có
+
+          # Lấy danh sách namespaces
           EXISTING=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces" \
             -H "Authorization: Bearer $TOKEN" \
             -H "Content-Type: application/json")
-          
-          # Kiểm tra có namespace SALES_PHONES chưa
+
           NAMESPACE_ID=$(echo "$EXISTING" | jq -r '.result[] | select(.title=="SALES_PHONES") | .id')
-          
+
           if [ -z "$NAMESPACE_ID" ] || [ "$NAMESPACE_ID" = "null" ]; then
             echo "➕ KV namespace SALES_PHONES chưa có, tạo mới..."
             CREATED=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces" \
@@ -88,7 +87,6 @@ jobs:
             echo "✅ KV namespace SALES_PHONES đã có: $NAMESPACE_ID"
           fi
 
-          # Lưu ID vào GitHub Actions env và output
           echo "SALES_PHONES_NAMESPACE_ID=$NAMESPACE_ID" >> $GITHUB_ENV
           echo "id=$NAMESPACE_ID" >> $GITHUB_OUTPUT
 
@@ -118,7 +116,7 @@ jobs:
           TARGET="${{ steps.worker_name.outputs.worker_name }}.${{ steps.subdomain.outputs.subdomain }}.workers.dev"
           echo "➡️ Sẽ trỏ subdomain về $TARGET"
 
-          # Kiểm tra record CNAME hiện có
+          # Lấy ID record hiện tại
           RECORD_ID=$(curl -s -X GET "$API?type=CNAME&name=call.rungkhoai.com" \
             -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result[0].id')
 
@@ -127,25 +125,25 @@ jobs:
             curl -s -X PUT "$API/$RECORD_ID" \
               -H "$AUTH" -H "Content-Type: application/json" \
               --data @- <<EOF
-{
-  "type": "CNAME",
-  "name": "call",
-  "content": "$TARGET",
-  "ttl": 1,
-  "proxied": true
-}
-EOF
-          else
-            echo "➕ DNS record chưa có, tạo mới..."
-            curl -s -X POST "$API" \
-              -H "$AUTH" -H "Content-Type: application/json" \
-              --data @- <<EOF
-{
-  "type": "CNAME",
-  "name": "call",
-  "content": "$TARGET",
-  "ttl": 1,
-  "proxied": true
-}
-EOF
-          fi
+              {
+                "type": "CNAME",
+                "name": "call",
+                "content": "$TARGET",
+                "ttl": 1,
+                "proxied": true
+              }
+              EOF
+                  else
+                    echo "➕ DNS record chưa có, tạo mới..."
+                    curl -s -X POST "$API" \
+                      -H "$AUTH" -H "Content-Type: application/json" \
+                      --data @- <<EOF
+              {
+                "type": "CNAME",
+                "name": "call",
+                "content": "$TARGET",
+                "ttl": 1,
+                "proxied": true
+              }
+              EOF
+                        fi
