@@ -60,6 +60,7 @@ jobs:
           SUBDOMAIN=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/workers/subdomain" \
             -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result.subdomain')
           echo "subdomain=$SUBDOMAIN" >> $GITHUB_OUTPUT
+          echo "✅ Workers.dev subdomain: $SUBDOMAIN"
 
       # -----------------------------------
       # 5. Kiểm tra và tạo KV namespace SALES_PHONES
@@ -102,8 +103,8 @@ jobs:
       - name: Deploy Worker with Wrangler v4
         run: npx wrangler deploy
         env:
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           SALES_PHONES_NAMESPACE_ID: ${{ steps.kv_namespace.outputs.id }}
           CSV_SALES_PHONE: ${{ secrets.CSV_SALES_PHONE }}
 
