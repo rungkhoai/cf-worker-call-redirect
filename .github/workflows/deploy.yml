@@ -66,13 +66,22 @@ jobs:
       - name: Ensure KV namespace exists
         id: kv_namespace
         run: |
-          EXISTING_ID=$(npx wrangler kv:namespace list --json | jq -r '.[] | select(.title=="SALES_PHONES") | .id')
-          if [ -z "$EXISTING_ID" ]; then
+          ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}
+          TOKEN=${{ secrets.CF_API_TOKEN }}
+          # Kiểm tra namespace bằng API
+          EXISTING=$(curl -s -X GET "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json")
+          NAMESPACE_ID=$(echo "$EXISTING" | jq -r '.result[] | select(.title=="SALES_PHONES") | .id')
+          if [ -z "$NAMESPACE_ID" ] || [ "$NAMESPACE_ID" = "null" ]; then
             echo "➕ KV namespace SALES_PHONES chưa có, tạo mới..."
-            NAMESPACE_ID=$(npx wrangler kv:namespace create "SALES_PHONES" --json | jq -r '.id')
+            CREATED=$(curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/storage/kv/namespaces" \
+              -H "Authorization: Bearer $TOKEN" \
+              -H "Content-Type: application/json" \
+              --data '{"title":"SALES_PHONES"}')
+            NAMESPACE_ID=$(echo "$CREATED" | jq -r '.result.id')
           else
-            echo "✅ KV namespace SALES_PHONES đã có: $EXISTING_ID"
-            NAMESPACE_ID=$EXISTING_ID
+            echo "✅ KV namespace SALES_PHONES đã có: $NAMESPACE_ID"
           fi
           echo "SALES_PHONES_NAMESPACE_ID=$NAMESPACE_ID" >> $GITHUB_ENV
           echo "id=$NAMESPACE_ID" >> $GITHUB_OUTPUT
