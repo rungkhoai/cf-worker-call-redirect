@@ -1,3 +1,14 @@
+// File: src/index.js
+export default {
+  async fetch(request, env, ctx) {
+    try {
+      return new Response("Worker OK: " + request.url);
+    } catch (e) {
+      return new Response("Error: " + e.message, { status: 500 });
+    }
+  }
+}
+/*
 export default {
   async fetch(request, env) {
     // Lấy danh sách số từ biến môi trường (được inject qua GitHub Secrets)
@@ -11,3 +22,4 @@ export default {
     return Response.redirect(`tel:${phoneNumber}`, 301);
   }
 }
+*/
