@@ -1,4 +1,4 @@
-name: Deploy to Cloudflare Workers
+name: Deploy Worker
 
 on:
   push:
@@ -8,14 +8,48 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    name: Deploy Worker
-
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Deploy with Wrangler
+      - name: Deploy with Wrangler v4
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CF_API_TOKEN }}
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           command: deploy
+
+      - name: Ensure DNS record exists for call.rungkhoai.com
+        run: |
+          ZONE_ID=${{ secrets.CF_ZONE_ID }}
+          API="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"
+          AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN_DNS }}"
+
+          # 1. Kiểm tra DNS đã tồn tại chưa
+          RECORD_ID=$(curl -s -X GET "$API?type=CNAME&name=call.rungkhoai.com" \
+            -H "$AUTH" -H "Content-Type: application/json" \
+            | jq -r '.result[0].id')
+
+          if [ "$RECORD_ID" != "null" ] && [ -n "$RECORD_ID" ]; then
+            echo "🔄 DNS record tồn tại, cập nhật..."
+            curl -s -X PUT "$API/$RECORD_ID" \
+              -H "$AUTH" -H "Content-Type: application/json" \
+              --data '{
+                "type":"CNAME",
+                "name":"call",
+                "content":"rungkhoai.com",
+                "ttl":1,
+                "proxied":true
+              }'
+          else
+            echo "➕ DNS record chưa có, tạo mới..."
+            curl -s -X POST "$API" \
+              -H "$AUTH" -H "Content-Type: application/json" \
+              --data '{
+                "type":"CNAME",
+                "name":"call",
+                "content":"rungkhoai.com",
+                "ttl":1,
+                "proxied":true
+              }'
+          fi
