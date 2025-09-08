@@ -115,6 +115,7 @@ jobs:
       # -----------------------------------
       # Deploy Worker với Wrangler v4
       - name: Deploy Worker with Wrangler v4
+        id: deploy
         run: |
           npx wrangler deploy 2>&1 | tee deploy.log
 
