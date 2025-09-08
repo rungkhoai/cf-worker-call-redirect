@@ -104,9 +104,9 @@ jobs:
       # Patch wrangler.toml với cả CSV_SALES_PHONE và KV ID
       - name: Patch wrangler.toml variables
         run: |
-          sed -i "s|\${CSV_SALES_PHONE}|${{ secrets.CSV_SALES_PHONE }}|" wrangler.toml
+          sed -i "s|\${CSV_SALES_PHONE}|$(printf '%s' "$CSV_SALES_PHONE" | sed -e 's/[&/\]/\\&/g')|" wrangler.toml
           sed -i "s|\${SALES_PHONES_NAMESPACE_ID}|$SALES_PHONES_NAMESPACE_ID|" wrangler.toml
-          echo "✅ wrangler.toml đã được patch: "
+          echo "✅ wrangler.toml đã được patch:"
           grep -E "CSV_SALES_PHONE|SALES_PHONES" wrangler.toml
         env:
           CSV_SALES_PHONE: ${{ secrets.CSV_SALES_PHONE }}
