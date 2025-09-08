@@ -117,7 +117,7 @@ jobs:
       - name: Deploy Worker with Wrangler v4
         id: deploy
         run: |
-          npx wrangler deploy 2>&1 | tee deploy.log
+          npx wrangler deploy --workers-dev 2>&1 | tee deploy.log
 
           # Lấy dòng route sau dòng Deployed (ví dụ: call.rungkhoai.com/*)
           RAW_ROUTE=$(grep -A1 "Deployed" deploy.log | tail -n1 | awk '{$1=$1;print}')
