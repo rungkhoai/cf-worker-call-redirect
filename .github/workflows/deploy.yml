@@ -142,6 +142,7 @@ jobs:
       # -----------------------------------
       # Kiểm tra và tạo/update DNS record
       - name: Check and create/update DNS record
+        id: dns_record
         run: |
           ZONE_ID=${{ secrets.CF_ZONE_ID }}
           API="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"
@@ -180,5 +181,5 @@ jobs:
             echo "✅ Thành công qua custom domain"
           else
             echo "⚠️ Custom domain chưa sẵn sàng, thử fallback..."
-            curl -fsS "${{ steps.deploy.outputs.fallback }}" || true
+            curl -fsS "${{ steps.dns_record.outputs.fallback }}" || true
           fi
