@@ -105,7 +105,7 @@ jobs:
         run: |
           sed -i "s|\${CSV_SALES_PHONE}|$(printf '%s' "$CSV_SALES_PHONE" | sed -e 's/[&/\]/\\&/g')|" wrangler.toml
           sed -i "s/\${SALES_PHONES_NAMESPACE_ID}/$SALES_PHONES_NAMESPACE_ID/" wrangler.toml
-          echo "✅ wrangler.toml đã được patch với KV namespace ID thực $SALES_PHONES_NAMESPACE_ID và $CSV_SALES_PHONE"
+          echo "✅ wrangler.toml đã được patch với KV namespace ID thực $SALES_PHONES_NAMESPACE_ID và ${CSV_SALES_PHONE:0:10}...${CSV_SALES_PHONE:-10}"
         env:
           CSV_SALES_PHONE: ${{ secrets.CSV_SALES_PHONE }}
 
