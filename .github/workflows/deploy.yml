@@ -117,21 +117,36 @@ jobs:
       - name: Deploy Worker with Wrangler v4
         id: deploy
         run: |
-          npx wrangler deploy --workers-dev 2>&1 | tee deploy.log
+          npx wrangler deploy 2>&1 | tee deploy.log
 
-          # Lấy dòng route sau dòng Deployed (ví dụ: call.rungkhoai.com/*)
-          RAW_ROUTE=$(grep -A1 "Deployed" deploy.log | tail -n1 | awk '{$1=$1;print}')
+          # Lấy tất cả các giá trị trong mảng routes của wrangler.toml
+          ROUTES=$(awk '/^routes\s*=/ {flag=1; next} /^\]/ {flag=0} flag {gsub(/[ ",]/,""); if($0!="") print $0}' wrangler.toml)
+
+          # Lấy giá trị đầu tiên của mảng routes
+          FIRST_ROUTE=$(echo "$ROUTES" | head -n1)
+
+          # Bỏ phần sau dấu '/' để lấy domain
+          CUSTOM_DOMAIN="${FIRST_ROUTE%%/*}"
+
+          echo "custom_domain=$CUSTOM_DOMAIN" >> $GITHUB_OUTPUT
+          echo "✅ Custom domain lấy từ routes trong wrangler.toml: $CUSTOM_DOMAIN"
+
+
+
+          # Lấy dòng Worker subdomain sau dòng Deployed
+          RAW_WORKER=$(grep -A1 "Deployed" deploy.log | tail -n1 | awk '{$1=$1;print}')
 
           # Bỏ tất cả từ dấu / trở đi
-          CUSTOM_DOMAIN="${RAW_ROUTE%%/*}" # bỏ từ / đến cuối
-          echo "custom_domain=$CUSTOM_DOMAIN" >> $GITHUB_OUTPUT
-          echo "✅ Custom domain: $CUSTOM_DOMAIN"
+          WORKER_DOMAIN="${RAW_WORKER%%/*}" # bỏ từ / đến cuối
 
-          ROUTE="https://${RAW_ROUTE%%/*}"   # bỏ từ / đến cuối và thêm https:// ở đầu
+          echo "worker_domain=$WORKER_DOMAIN" >> $GITHUB_OUTPUT
+          echo "✅ Worker domain: $WORKER_DOMAIN"
 
-          echo "route=$ROUTE" >> $GITHUB_OUTPUT
-          echo "✅ Đã deploy, route thô: $RAW_ROUTE"
-          echo "✅ Đã deploy, route chính: $ROUTE"
+          WORKER_ROUTE="https://${RAW_ROUTE%%/*}"   # bỏ từ / đến cuối và thêm https:// ở đầu
+
+          echo "worker_route=$WORKER_ROUTE" >> $GITHUB_OUTPUT
+          echo "✅ Đã deploy, route thô: $WORKER_DOMAIN"
+          echo "✅ Đã deploy, route chính: $WORKER_ROUTE"
 
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
