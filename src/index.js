@@ -112,6 +112,53 @@ export default {
 // File: src/index.js
 export default {
   async fetch(request, env, ctx) {
+    const KV = env.SALES_PHONES; // KV namespace
+    const STATUS = [];
+
+    try {
+      // Lấy biến môi trường từ GitHub Action
+      const sheetUrl = env.CSV_SALES_PHONE || "⚠️ Không có ENV CSV_SALES_PHONE";
+      STATUS.push(`ENV CSV_SALES_PHONE: ${sheetUrl.slice(0, 50)}...`);
+
+      // Lấy từ KV
+      const [kvCsvUrl, kvPhones, kvTs] = await Promise.all([
+        KV.get("csv_url"),
+        KV.get("phones"),
+        KV.get("phones_ts"),
+      ]);
+
+      STATUS.push(
+        `KV csv_url: ${kvCsvUrl ? kvCsvUrl.slice(0, 50) + "..." : "❌ Chưa có"}`
+      );
+      STATUS.push(
+        `KV phones: ${kvPhones ? kvPhones.slice(0, 50) + "..." : "❌ Chưa có"}`
+      );
+      STATUS.push(`KV phones_ts: ${kvTs || "❌ Chưa có"}`);
+
+      return new Response(
+        `<html>
+          <head><meta charset="UTF-8"><title>Debug Worker</title></head>
+          <body>
+            <h1>Debug cấu hình Worker</h1>
+            <pre>${STATUS.join("\n")}</pre>
+          </body>
+        </html>`,
+        { headers: { "Content-Type": "text/html; charset=UTF-8" } }
+      );
+    } catch (e) {
+      return new Response(
+        `<html><head><meta charset="UTF-8"></head>
+        <body><h1>Lỗi Worker:</h1><pre>${e.message}</pre></body></html>`,
+        { status: 500, headers: { "Content-Type": "text/html; charset=UTF-8" } }
+      );
+    }
+  },
+};
+
+/*
+// File: src/index.js
+export default {
+  async fetch(request, env, ctx) {
     const KV = env.SALES_PHONES;
     const STATUS = [];
 
@@ -182,4 +229,4 @@ export default {
         { status: 500, headers: { "Content-Type": "text/html; charset=UTF-8" } });
     }
   }
-};
+};*/
