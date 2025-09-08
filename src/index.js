@@ -84,11 +84,12 @@ export default {
         `<html>
           <head>
             <meta charset="UTF-8">
-            <title>Số điện thoại ngẫu nhiên</title>
+            <title>Số điện thoại để liên hệ với Rừng Khoái</title>
             <style>
               @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
               * { margin:0; padding:0; box-sizing:border-box; font-family: 'Inter', sans-serif; }
               html, body { height: 100%; display: flex; justify-content: center; align-items: center; background: #f5f5f5; }
+              h1 { font-size: 1.75rem; color: #054219; margin-bottom: 16px; }
               .container { text-align: center; background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); max-width: 360px; width: 90%; animation: fadeIn 0.5s ease-in-out; }
               .phone-number { font-size: 2.5rem; font-weight: 700; color: #1f2937; margin-bottom: 24px; animation: pulse 1.5s infinite; }
               .call-button { display: inline-block; background: #10b981; color: #fff; font-size: 1.25rem; font-weight: 600; padding: 16px 32px; border-radius: 8px; text-decoration: none; transition: background 0.3s, transform 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
@@ -101,10 +102,12 @@ export default {
           </head>
           <body>
             <div class="container">
+              <h1>📞 Liên hệ với Rừng Khoái</h1>
               <div class="phone-number">${randomPhone}</div>
               <a class="call-button" href="tel:${randomPhone}">Nhấn để gọi</a>
-              <div class="debug"><pre>${STATUS.join("\n")}</pre></div>
+              
             </div>
+            <div class="debug"><pre>${STATUS.join("\n")}</pre></div>
           </body>
         </html>`,
         { headers: { "Content-Type": "text/html; charset=UTF-8" } }
