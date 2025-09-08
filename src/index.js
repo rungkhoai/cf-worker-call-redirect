@@ -1,14 +1,14 @@
 // File: src/index.js
 export default {
   async fetch(request, env, ctx) {
-    const KV = env.SALES_PHONES; // KV binding từ wrangler.toml
-    const SHEET_CSV_URL = env.CSV_SALES_PHONE; // CSV Google Sheet URL
+    const KV = env.SALES_PHONES;
+    const SHEET_CSV_URL = env.CSV_SALES_PHONE;
     const STATUS = [];
 
     try {
-      STATUS.push("🚀 Bắt đầu xử lý...");
+      STATUS.push("🚀 Bắt đầu xử lý request...");
 
-      // --- Lấy cache từ KV ---
+      // --- Lấy KV ---
       const [cachedPhonesStr, cachedTSStr] = await Promise.all([
         KV.get("phones"),
         KV.get("phones_ts"),
@@ -20,45 +20,51 @@ export default {
       STATUS.push(`🔹 Số điện thoại trong KV: ${phones.length}`);
       STATUS.push(`🔹 Timestamp cache: ${ts || "chưa có"}`);
 
-      // --- Hàm fetch CSV từ Google Sheet ---
+      // --- Hàm fetch CSV ---
       const fetchAndCache = async () => {
-        STATUS.push("📡 Fetch CSV từ Google Sheet...");
-        const res = await fetch(SHEET_CSV_URL);
-        if (!res.ok) throw new Error("❌ Không fetch được CSV");
-        const csvText = await res.text();
+        try {
+          STATUS.push("📡 Fetch CSV từ Google Sheet...");
+          const res = await fetch(SHEET_CSV_URL);
+          if (!res.ok) throw new Error("❌ Không fetch được CSV");
+          const csvText = await res.text();
 
-        const lines = csvText.split("\n").slice(1);
-        const newPhones = lines
-          .map((line) => line.split(",")[1]?.trim().replace(/[.\s]/g, ""))
-          .filter(Boolean);
+          const lines = csvText.split("\n").slice(1);
+          const newPhones = lines
+            .map((line) => line.split(",")[1]?.trim().replace(/[.\s]/g, ""))
+            .filter(Boolean);
 
-        await Promise.all([
-          KV.put("phones", JSON.stringify(newPhones)),
-          KV.put("phones_ts", Date.now().toString()),
-        ]);
+          await Promise.all([
+            KV.put("phones", JSON.stringify(newPhones)),
+            KV.put("phones_ts", Date.now().toString()),
+          ]);
 
-        STATUS.push(`✅ Đã lưu ${newPhones.length} số vào KV`);
-        return newPhones;
+          STATUS.push(`✅ Đã cập nhật ${newPhones.length} số vào KV`);
+        } catch (e) {
+          STATUS.push(`❌ Lỗi fetch CSV: ${e.message}`);
+        }
       };
 
-      // --- Quyết định fetch CSV ---
-      if (!phones.length) {
-        STATUS.push("⚠️ Cache trống, fetch CSV trực tiếp...");
-        phones = await fetchAndCache(); // bắt buộc fetch
-      } else {
-        // Cache còn số, dùng luôn
-        STATUS.push("✅ Dùng số điện thoại trong KV ngay lập tức");
+      // --- Chọn số hiển thị ngay ---
+      let randomPhone = "❌ Không có số trong KV";
+      if (phones.length) {
+        randomPhone = phones[Math.floor(Math.random() * phones.length)];
+        STATUS.push(`☎️ Số điện thoại được chọn: ${randomPhone}`);
 
-        // Nếu quá 4h thì fetch background
-        if (now - ts >= 4 * 60 * 60 * 1000) {
-          STATUS.push("⏳ Cache >4h, fetch CSV mới trong background...");
-          ctx.waitUntil(fetchAndCache()); // không block response
+        // fetch background nếu gần hết hạn (>3h55)
+        const FOUR_HOURS = 4 * 60 * 60 * 1000;
+        if (!ts || now - ts >= FOUR_HOURS - 5 * 60 * 1000) {
+          STATUS.push(
+            "⏳ Cache gần hết hạn/đã quá hạn, fetch CSV background..."
+          );
+          ctx.waitUntil(fetchAndCache());
         }
+      } else {
+        // cache trống, bắt buộc fetch
+        STATUS.push("⚠️ Cache trống, fetch CSV trực tiếp...");
+        phones = await fetchAndCache();
+        if (phones.length)
+          randomPhone = phones[Math.floor(Math.random() * phones.length)];
       }
-
-      // --- Chọn số ngẫu nhiên ---
-      const randomPhone = phones[Math.floor(Math.random() * phones.length)];
-      STATUS.push(`☎️ Số điện thoại được chọn: ${randomPhone}`);
 
       // --- Trả về HTML ---
       return new Response(
@@ -83,6 +89,33 @@ export default {
         </body></html>`,
         { status: 500, headers: { "Content-Type": "text/html; charset=UTF-8" } }
       );
+    }
+  },
+
+  // --- Cron job mỗi 6h ---
+  async scheduled(event, env, ctx) {
+    const KV = env.SALES_PHONES;
+    const SHEET_CSV_URL = env.CSV_SALES_PHONE;
+
+    try {
+      console.log("⏰ Cron job bắt đầu fetch CSV...");
+      const res = await fetch(SHEET_CSV_URL);
+      if (!res.ok) throw new Error("❌ Không fetch được CSV");
+      const csvText = await res.text();
+
+      const lines = csvText.split("\n").slice(1);
+      const phones = lines
+        .map((l) => l.split(",")[1]?.trim().replace(/[.\s]/g, ""))
+        .filter(Boolean);
+
+      await Promise.all([
+        KV.put("phones", JSON.stringify(phones)),
+        KV.put("phones_ts", Date.now().toString()),
+      ]);
+
+      console.log(`✅ Cron job cập nhật ${phones.length} số vào KV`);
+    } catch (e) {
+      console.error("❌ Cron job lỗi:", e.message);
     }
   },
 };

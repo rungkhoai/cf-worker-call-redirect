@@ -15,3 +15,6 @@ routes = [
 [[kv_namespaces]]
 binding = "SALES_PHONES"
 id = "${SALES_PHONES_NAMESPACE_ID}"
+
+[triggers]
+crons = ["0 */6 * * *"]  # chạy vào phút 0, mỗi 6 giờ
