@@ -113,6 +113,7 @@ jobs:
         run: |
           sed -i "s/\${SALES_PHONES_NAMESPACE_ID}/$SALES_PHONES_NAMESPACE_ID/" wrangler.toml
           echo "✅ wrangler.toml đã được patch với KV namespace ID thực"
+        CSV_SALES_PHONE: ${{ secrets.CSV_SALES_PHONE }}
 
       # -----------------------------------
       # Deploy Worker với Wrangler v4
