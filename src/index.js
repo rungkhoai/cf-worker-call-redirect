@@ -44,24 +44,16 @@ export default {
       // --- Quyết định fetch CSV ---
       if (!phones.length) {
         STATUS.push("⚠️ Cache trống, fetch CSV trực tiếp...");
-        phones = await fetchAndCache();
-      } else if (now - ts >= 4 * 60 * 60 * 1000) {
-        STATUS.push("⏳ Cache quá 4h, fetch CSV mới trong background...");
-        ctx.waitUntil(fetchAndCache()); // fetch background
-      }
+        phones = await fetchAndCache(); // bắt buộc fetch
+      } else {
+        // Cache còn số, dùng luôn
+        STATUS.push("✅ Dùng số điện thoại trong KV ngay lập tức");
 
-      if (!phones.length) {
-        return new Response(
-          `<html><head><meta charset="UTF-8"></head>
-          <body>
-            <h1>⚠️ Không có số điện thoại</h1>
-            <pre>${STATUS.join("\n")}</pre>
-          </body></html>`,
-          {
-            status: 500,
-            headers: { "Content-Type": "text/html; charset=UTF-8" },
-          }
-        );
+        // Nếu quá 4h thì fetch background
+        if (now - ts >= 4 * 60 * 60 * 1000) {
+          STATUS.push("⏳ Cache >4h, fetch CSV mới trong background...");
+          ctx.waitUntil(fetchAndCache()); // không block response
+        }
       }
 
       // --- Chọn số ngẫu nhiên ---
