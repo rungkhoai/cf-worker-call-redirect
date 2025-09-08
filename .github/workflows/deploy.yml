@@ -131,22 +131,22 @@ jobs:
           echo "custom_domain=$CUSTOM_DOMAIN" >> $GITHUB_OUTPUT
           echo "✅ Custom domain lấy từ routes trong wrangler.toml: $CUSTOM_DOMAIN"
 
-
-
           # Lấy dòng Worker subdomain sau dòng Deployed
           RAW_WORKER=$(grep -A1 "Deployed" deploy.log | tail -n1 | awk '{$1=$1;print}')
 
-          # Bỏ tất cả từ dấu / trở đi
-          WORKER_DOMAIN="${RAW_WORKER%%/*}" # bỏ từ / đến cuối
+          # Kiểm tra có chứa https:// không, và có phải workers.dev không
+          DEV_URL=$(echo "$RAW_WORKER" | grep -Eo 'https://[a-zA-Z0-9.-]+\.workers\.dev' | head -n1)
 
-          echo "worker_domain=$WORKER_DOMAIN" >> $GITHUB_OUTPUT
-          echo "✅ Worker domain: $WORKER_DOMAIN"
+          # Tách domain từ URL
+          DEV_DOMAIN="${DEV_URL#https://}"
 
-          WORKER_ROUTE="https://${RAW_ROUTE%%/*}"   # bỏ từ / đến cuối và thêm https:// ở đầu
+          # Xuất ra GITHUB_OUTPUT
+          echo "dev_url=$DEV_URL" >> $GITHUB_OUTPUT
+          echo "dev_domain=$DEV_DOMAIN" >> $GITHUB_OUTPUT
 
-          echo "worker_route=$WORKER_ROUTE" >> $GITHUB_OUTPUT
-          echo "✅ Đã deploy, route thô: $WORKER_DOMAIN"
-          echo "✅ Đã deploy, route chính: $WORKER_ROUTE"
+          # In ra màn hình
+          echo "✅ Dev Worker URL: $DEV_URL"
+          echo "✅ Dev Worker domain: $DEV_DOMAIN"
 
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
@@ -163,7 +163,8 @@ jobs:
           API="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"
           AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN_DNS }}"
           CUSTOM_DOMAIN=${{ steps.deploy.outputs.custom_domain }}
-          TARGET="${{ steps.worker_name.outputs.worker_name }}.${{ steps.subdomain.outputs.subdomain }}.workers.dev"
+          TARGET=${{ steps.deploy.outputs.dev_domain }}
+          #TARGET="${{ steps.worker_name.outputs.worker_name }}.${{ steps.subdomain.outputs.subdomain }}.workers.dev"
           FALLBACK="https://$TARGET"
 
           echo "fallback=$FALLBACK" >> $GITHUB_OUTPUT
@@ -196,5 +197,6 @@ jobs:
             echo "✅ Thành công qua custom domain"
           else
             echo "⚠️ Custom domain chưa sẵn sàng, thử fallback..."
-            curl -fsS "${{ steps.dns_record.outputs.fallback }}" || true
+            #curl -fsS "${{ steps.dns_record.outputs.fallback }}" || true
+            curl -fsS "${{ steps.deploy.outputs.dev_url }}" || true
           fi
