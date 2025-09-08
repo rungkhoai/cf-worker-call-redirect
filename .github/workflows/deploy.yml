@@ -118,11 +118,17 @@ jobs:
         run: |
           npx wrangler deploy 2>&1 | tee deploy.log
 
-          # Ưu tiên route custom domain, nếu không có thì lấy workers.dev
-          ROUTE=$(grep -oE 'https?://[a-zA-Z0-9.-]+/(\\*|)' deploy.log | grep -E 'rungkhoai.com|workers.dev' | head -n1 | sed 's/\*$//')
+          # Lấy dòng route (ví dụ: call.rungkhoai.com/*)
+          RAW_ROUTE=$(grep -A1 "Deployed" deploy.log | tail -n1 | awk '{$1=$1;print}')
+          ROUTE="https://${RAW_ROUTE%/*}"   # bỏ /* ở cuối
 
           echo "route=$ROUTE" >> $GITHUB_OUTPUT
-          echo "✅ Đã deploy, route chính: $ROUTE"
+
+          # Ưu tiên route custom domain, nếu không có thì lấy workers.dev
+          ROUTE2=$(grep -oE 'https?://[a-zA-Z0-9.-]+/(\\*|)' deploy.log | grep -E 'rungkhoai.com|workers.dev' | head -n1 | sed 's/\*$//')
+
+          echo "route=$ROUTE2" >> $GITHUB_OUTPUT
+          echo "✅ Đã deploy, route chính: $ROUTE2"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
