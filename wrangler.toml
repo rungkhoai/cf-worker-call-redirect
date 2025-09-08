@@ -8,6 +8,9 @@ routes = [
   "call.rungkhoai.com/*"
 ]
 
+[vars]
+  CSV_SALES_PHONE = "${CSV_SALES_PHONE}"
+
 kv_namespaces = [
   { binding = "SALES_PHONES", id = "${SALES_PHONES_NAMESPACE_ID}" }
 ]
