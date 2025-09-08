@@ -91,7 +91,7 @@ export default {
               html, body { height: 100%; display: flex; justify-content: center; align-items: center; background: #f5f5f5; }
               h1 { font-size: 1.75rem; color: #054219; margin-bottom: 16px; }
               .container { text-align: center; background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); max-width: 360px; width: 90%; animation: fadeIn 0.5s ease-in-out; }
-              .phone-number { font-size: 2.5rem; font-weight: 700; color: #1f2937; margin-bottom: 24px; animation: pulse 1.5s infinite; }
+              .phone-number { font-size: 2.5rem; font-weight: 700; color: #1f2937; margin: 24px 0; animation: pulse 1.5s infinite; display: inline-block; }
               .call-button { display: inline-block; background: #10b981; color: #fff; font-size: 1.25rem; font-weight: 600; padding: 16px 32px; border-radius: 8px; text-decoration: none; transition: background 0.3s, transform 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
               .call-button:hover { background: #059669; transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.15); }
               .call-button:active { transform: translateY(0); box-shadow: 0 3px 8px rgba(0,0,0,0.1); }
