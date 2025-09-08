@@ -120,7 +120,13 @@ jobs:
 
           # Lấy dòng route sau dòng Deployed (ví dụ: call.rungkhoai.com/*)
           RAW_ROUTE=$(grep -A1 "Deployed" deploy.log | tail -n1 | awk '{$1=$1;print}')
-          ROUTE="https://${RAW_ROUTE%/*}"   # bỏ /* ở cuối
+
+          # Bỏ tất cả từ dấu / trở đi
+          CUSTOM_DOMAIN="${RAW_ROUTE%%/*}" # bỏ từ / đến cuối
+          echo "custom_domain=$CUSTOM_DOMAIN" >> $GITHUB_OUTPUT
+          echo "✅ Custom domain: $CUSTOM_DOMAIN"
+
+          ROUTE="https://${RAW_ROUTE%%/*}"   # bỏ từ / đến cuối và thêm https:// ở đầu
 
           echo "route=$ROUTE" >> $GITHUB_OUTPUT
           echo "✅ Đã deploy, route thô: $RAW_ROUTE"
@@ -139,12 +145,15 @@ jobs:
           ZONE_ID=${{ secrets.CF_ZONE_ID }}
           API="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"
           AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN_DNS }}"
+          CUSTOM_DOMAIN=${{ steps.deploy.outputs.custom_domain }}
           TARGET="${{ steps.worker_name.outputs.worker_name }}.${{ steps.subdomain.outputs.subdomain }}.workers.dev"
+          FALLBACK="https://$TARGET"
 
-          echo "➡️ Sẽ trỏ subdomain về $TARGET"
+          echo "fallback=$FALLBACK" >> $GITHUB_OUTPUT
+          echo "➡️ Sẽ trỏ Subdomain $CUSTOM_DOMAIN về $TARGET"
 
           # Lấy ID record hiện tại
-          RECORD_ID=$(curl -s -X GET "$API?type=CNAME&name=call.rungkhoai.com" \
+          RECORD_ID=$(curl -s -X GET "$API?type=CNAME&name=$CUSTOM_DOMAIN" \
             -H "$AUTH" -H "Content-Type: application/json" | jq -r '.result[0].id')
 
           if [ "$RECORD_ID" != "null" ] && [ -n "$RECORD_ID" ]; then
@@ -159,11 +168,16 @@ jobs:
               --data '{"type":"CNAME","name":"call","content":"'"$TARGET"'","ttl":1,"proxied":true}'
           fi
 
-          echo "✅ DNS record đã được tạo/cập nhật: call.rungkhoai.com -> $TARGET"
+          echo "✅ DNS record đã được tạo/cập nhật: $CUSTOM_DOMAIN -> $TARGET"
 
       # -----------------------------------
       # Trigger Worker lần đầu để lưu CSV_SALES_PHONE vào KV
       - name: Trigger Worker first time to save csv_url to KV
         run: |
-          echo "➡️ Gọi Worker tại địa chỉ ${{ steps.deploy.outputs.route }} lần đầu để lưu csv_url vào KV"
-          curl -s "${{ steps.deploy.outputs.route }}" || true
+          echo "➡️ Gọi Worker tại địa chỉ ${{ steps.deploy.outputs.custom_domain }}"
+          if curl -fsS "${{ steps.deploy.outputs.custom_domain }}" >/dev/null; then
+            echo "✅ Thành công qua custom domain"
+          else
+            echo "⚠️ Custom domain chưa sẵn sàng, thử fallback..."
+            curl -fsS "${{ steps.deploy.outputs.fallback }}" || true
+          fi
