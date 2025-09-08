@@ -102,12 +102,12 @@ export default {
           </head>
           <body>
             <div class="container">
-              <h1>📞 Liên hệ với Rừng Khoái</h1>
+              <h1>📞 Liên hệ với </br> Rừng Khoái</h1>
               <div class="phone-number">${randomPhone}</div>
               <a class="call-button" href="tel:${randomPhone}">Nhấn để gọi</a>
               
             </div>
-            <div class="debug"><pre>${STATUS.join("\n")}</pre></div>
+            <!--div class="debug"><pre>${STATUS.join("\n")}</pre></div-->
           </body>
         </html>`,
         { headers: { "Content-Type": "text/html; charset=UTF-8" } }
