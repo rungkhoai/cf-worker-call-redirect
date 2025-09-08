@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # -----------------------------------
-      # 1. Checkout code
+      # Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
       # -----------------------------------
-      # 2. Setup Node.js và Wrangler v4
-      - name: Setup Node.js
+      # Setup Node.js và Wrangler v4
+      - name: Setup Node.js and Wrangler v4
         uses: actions/setup-node@v3
         with:
           node-version: "20"
@@ -26,7 +26,7 @@ jobs:
         run: npm install --save-dev wrangler@4
 
       # -----------------------------------
-      # 3. Lấy Worker name từ wrangler.toml
+      # Lấy tên Worker từ wrangler.toml
       - name: Get Worker name from wrangler.toml
         id: worker_name
         run: |
@@ -35,7 +35,7 @@ jobs:
           echo "✅ Worker name đã lấy: $NAME"
 
       # -----------------------------------
-      # 4. Kiểm tra Workers.dev subdomain
+      # Đảm bảo Workers.dev subdomain đã được tạo
       - name: Ensure Workers.dev subdomain enabled
         run: |
           ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}
@@ -51,7 +51,8 @@ jobs:
           else
             echo "✅ Subdomain đã có: $SUBDOMAIN.workers.dev"
           fi
-
+      # -----------------------------------
+      # Lấy subdomain thực tế
       - name: Get Workers.dev subdomain
         id: subdomain
         run: |
@@ -63,7 +64,7 @@ jobs:
           echo "✅ Workers.dev subdomain: $SUBDOMAIN"
 
       # -----------------------------------
-      # 5. Kiểm tra và tạo KV namespace SALES_PHONES
+      # Đảm bảo KV namespace tồn tại
       - name: Ensure KV namespace exists
         id: kv_namespace
         run: |
@@ -92,7 +93,7 @@ jobs:
           echo "id=$NAMESPACE_ID" >> $GITHUB_OUTPUT
 
       # -----------------------------------
-      # Kiểm tra secret CSV_SALES_PHONE
+      #  Kiểm tra secret CSV_SALES_PHONE
       - name: Check CSV_SALES_PHONE secret
         run: |
           echo "CSV_SALES_PHONE preview: ${CSV_SALES_PHONE:0:10}..."
@@ -100,19 +101,26 @@ jobs:
           CSV_SALES_PHONE: ${{ secrets.CSV_SALES_PHONE }}
 
       # -----------------------------------
-      # 6. Patch wrangler.toml với ID thực
-      - name: Patch wrangler.toml KV ID
+      # Patch wrangler.toml với KV namespace ID và CSV_SALES_PHONE
+      - name: Patch wrangler.toml with KV NAMESPACE ID and CSV_SALES_PHONE
         run: |
           sed -i "s|\${CSV_SALES_PHONE}|$(printf '%s' "$CSV_SALES_PHONE" | sed -e 's/[&/\]/\\&/g')|" wrangler.toml
           sed -i "s/\${SALES_PHONES_NAMESPACE_ID}/$SALES_PHONES_NAMESPACE_ID/" wrangler.toml
-          echo "✅ wrangler.toml đã được patch với KV namespace ID thực $SALES_PHONES_NAMESPACE_ID và ${CSV_SALES_PHONE:0:10}...${CSV_SALES_PHONE: -10}"
+          head="${CSV_SALES_PHONE:0:10}"
+          tail="${CSV_SALES_PHONE: -10}"   # chú ý có khoảng trắng trước -10
+          echo "✅ wrangler.toml đã được patch với KV namespace ID thực $SALES_PHONES_NAMESPACE_ID và ${head}...${tail}"
         env:
           CSV_SALES_PHONE: ${{ secrets.CSV_SALES_PHONE }}
 
       # -----------------------------------
-      # 7. Deploy Worker với Wrangler v4
+      # Deploy Worker với Wrangler v4
       - name: Deploy Worker with Wrangler v4
-        run: npx wrangler deploy
+        run: |
+          npx wrangler deploy 2>&1 | tee deploy.log
+          # Parse route (ví dụ call.rungkhoai.com/* hoặc workers.dev/*)
+          ROUTE=$(grep -oE 'https?://[^ ]+' deploy.log | grep -v telemetry | head -n1 | sed 's/\*$//')
+          echo "route=$ROUTE" >> $GITHUB_OUTPUT
+          echo "✅ Đã deploy, route chính: $ROUTE"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
@@ -120,8 +128,8 @@ jobs:
           CSV_SALES_PHONE: ${{ secrets.CSV_SALES_PHONE }}
 
       # -----------------------------------
-      # 8. Kiểm tra và tạo/update DNS record
-      - name: Ensure DNS record exists for this Project
+      # Kiểm tra và tạo/update DNS record
+      - name: Check and create/update DNS record
         run: |
           ZONE_ID=${{ secrets.CF_ZONE_ID }}
           API="https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records"
@@ -145,3 +153,12 @@ jobs:
               -H "$AUTH" -H "Content-Type: application/json" \
               --data '{"type":"CNAME","name":"call","content":"'"$TARGET"'","ttl":1,"proxied":true}'
           fi
+
+          echo "✅ DNS record đã được tạo/cập nhật: call.rungkhoai.com -> $TARGET"
+
+      # -----------------------------------
+      # Trigger Worker lần đầu để lưu CSV_SALES_PHONE vào KV
+      - name: Trigger Worker first time to save csv_url to KV
+        run: |
+          echo "➡️ Gọi Worker tại địa chỉ ${{ steps.deploy.outputs.route }} lần đầu để lưu csv_url vào KV"
+          curl -s "${{ steps.deploy.outputs.route }}" || true
