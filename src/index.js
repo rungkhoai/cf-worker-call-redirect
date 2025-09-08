@@ -110,17 +110,30 @@ export default {
 // Worker debug: hiển thị URL CSV Google Sheet lấy từ env
 
 // File: src/index.js
+// File: src/index.js
 export default {
   async fetch(request, env, ctx) {
-    const KV = env.SALES_PHONES; // KV namespace
+    const KV = env.SALES_PHONES; // KV binding từ wrangler.toml
     const STATUS = [];
 
     try {
-      // Lấy biến môi trường từ GitHub Action
-      const sheetUrl = env.CSV_SALES_PHONE || "⚠️ Không có ENV CSV_SALES_PHONE";
-      STATUS.push(`ENV CSV_SALES_PHONE: ${sheetUrl.slice(0, 50)}...`);
+      const sheetUrl = env.CSV_SALES_PHONE;
+      if (sheetUrl) {
+        STATUS.push(`ENV CSV_SALES_PHONE: ${sheetUrl.slice(0, 50)}...`);
 
-      // Lấy từ KV
+        // Nếu chưa có trong KV hoặc KV khác ENV thì lưu/ghi đè
+        const currentCsv = await KV.get("csv_url");
+        if (!currentCsv || currentCsv !== sheetUrl) {
+          await KV.put("csv_url", sheetUrl);
+          STATUS.push("✅ Đã lưu ENV CSV_SALES_PHONE vào KV key csv_url");
+        } else {
+          STATUS.push("ℹ️ csv_url trong KV đã khớp với ENV, không cần lưu lại");
+        }
+      } else {
+        STATUS.push("⚠️ Không có ENV CSV_SALES_PHONE khi deploy");
+      }
+
+      // Lấy từ KV để confirm
       const [kvCsvUrl, kvPhones, kvTs] = await Promise.all([
         KV.get("csv_url"),
         KV.get("phones"),
