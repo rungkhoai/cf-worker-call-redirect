@@ -118,11 +118,12 @@ jobs:
         run: |
           npx wrangler deploy 2>&1 | tee deploy.log
 
-          # Lấy dòng route (ví dụ: call.rungkhoai.com/*)
+          # Lấy dòng route sau dòng Deployed (ví dụ: call.rungkhoai.com/*)
           RAW_ROUTE=$(grep -A1 "Deployed" deploy.log | tail -n1 | awk '{$1=$1;print}')
           ROUTE="https://${RAW_ROUTE%/*}"   # bỏ /* ở cuối
 
           echo "route=$ROUTE" >> $GITHUB_OUTPUT
+          echo "✅ Đã deploy, route thô: $RAW_ROUTE"
           echo "✅ Đã deploy, route chính: $ROUTE"
 
         env:
