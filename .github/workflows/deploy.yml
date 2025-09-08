@@ -117,8 +117,10 @@ jobs:
       - name: Deploy Worker with Wrangler v4
         run: |
           npx wrangler deploy 2>&1 | tee deploy.log
-          # Parse route (ví dụ call.rungkhoai.com/* hoặc workers.dev/*)
-          ROUTE=$(grep -oE 'https?://[^ ]+' deploy.log | grep -v telemetry | head -n1 | sed 's/\*$//')
+
+          # Ưu tiên route custom domain, nếu không có thì lấy workers.dev
+          ROUTE=$(grep -oE 'https?://[a-zA-Z0-9.-]+/(\\*|)' deploy.log | grep -E 'rungkhoai.com|workers.dev' | head -n1 | sed 's/\*$//')
+
           echo "route=$ROUTE" >> $GITHUB_OUTPUT
           echo "✅ Đã deploy, route chính: $ROUTE"
         env:
