@@ -11,13 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # -----------------------------------
-      # 1. Checkout code
+      # Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
       # -----------------------------------
-      # 2. Setup Node.js và Wrangler v4
-      - name: Setup Node.js
+      # Setup Node.js và Wrangler v4
+      - name: Setup Node.js and Wrangler v4
         uses: actions/setup-node@v3
         with:
           node-version: "20"
@@ -26,7 +26,7 @@ jobs:
         run: npm install --save-dev wrangler@4
 
       # -----------------------------------
-      # 3. Lấy Worker name từ wrangler.toml
+      # Lấy Worker name từ wrangler.toml
       - name: Get Worker name from wrangler.toml
         id: worker_name
         run: |
@@ -35,8 +35,8 @@ jobs:
           echo "✅ Worker name đã lấy: $NAME"
 
       # -----------------------------------
-      # 4. Kiểm tra Workers.dev subdomain
-      - name: Ensure Workers.dev subdomain enabled
+      # Kiểm tra Workers.dev subdomain
+      - name: Ensure has Workers.dev subdomain
         run: |
           ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}
           AUTH="Authorization: Bearer ${{ secrets.CF_API_TOKEN }}"
@@ -51,7 +51,8 @@ jobs:
           else
             echo "✅ Subdomain đã có: $SUBDOMAIN.workers.dev"
           fi
-
+      # -----------------------------------
+      # 5. Lây thông tin subdomain workers.dev
       - name: Get Workers.dev subdomain
         id: subdomain
         run: |
@@ -95,19 +96,26 @@ jobs:
       # Kiểm tra secret CSV_SALES_PHONE
       - name: Check CSV_SALES_PHONE secret
         run: |
-          echo "CSV_SALES_PHONE preview: ${CSV_SALES_PHONE:0:10}..."
+          echo "Đã có CSV_SALES_PHONE preview: ${CSV_SALES_PHONE:0:10}..."
         env:
           CSV_SALES_PHONE: ${{ secrets.CSV_SALES_PHONE }}
 
       # -----------------------------------
-      # 6. Patch wrangler.toml với ID thực
+      # Patch wrangler.toml với secret CSV_SALES_PHONE
+      - name: Patch wrangler.toml CSV_SALES_PHONE
+        run: |
+          sed -i "s|\${CSV_SALES_PHONE}|${{ secrets.CSV_SALES_PHONE }}|" wrangler.toml
+          echo "✅ wrangler.toml đã được patch với CSV_SALES_PHONE preview: ${CSV_SALES_PHONE:0:10}..."
+
+      # -----------------------------------
+      # Patch wrangler.toml với KV ID thực
       - name: Patch wrangler.toml KV ID
         run: |
           sed -i "s/\${SALES_PHONES_NAMESPACE_ID}/$SALES_PHONES_NAMESPACE_ID/" wrangler.toml
           echo "✅ wrangler.toml đã được patch với KV namespace ID thực"
 
       # -----------------------------------
-      # 7. Deploy Worker với Wrangler v4
+      # Deploy Worker với Wrangler v4
       - name: Deploy Worker with Wrangler v4
         run: npx wrangler deploy
         env:
