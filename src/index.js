@@ -110,7 +110,6 @@ export default {
 // Worker debug: hiển thị URL CSV Google Sheet lấy từ env
 
 // File: src/index.js
-// File: src/index.js
 export default {
   async fetch(request, env, ctx) {
     const KV = env.SALES_PHONES; // KV binding từ wrangler.toml
