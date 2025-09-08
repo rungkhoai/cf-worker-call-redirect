@@ -113,6 +113,7 @@ export default {
 export default {
   async fetch(request, env, ctx) {
     const KV = env.SALES_PHONES; // KV binding từ wrangler.toml
+    const SHEET_CSV_URL = env.CSV_SALES_PHONE; // Đọc từ secret trực tiếp
     const STATUS = [];
 
     try {
