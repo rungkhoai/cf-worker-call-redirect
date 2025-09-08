@@ -104,7 +104,7 @@ jobs:
       - name: Patch wrangler.toml KV ID
         run: |
           sed -i "s/\${SALES_PHONES_NAMESPACE_ID}/$SALES_PHONES_NAMESPACE_ID/" wrangler.toml
-          echo "✅ wrangler.toml đã được patch với KV namespace ID thực"
+          echo "✅ wrangler.toml đã được patch với KV namespace ID thực $SALES_PHONES_NAMESPACE_ID"
 
       # -----------------------------------
       # 7. Deploy Worker với Wrangler v4
