@@ -85,27 +85,92 @@ export default {
           <head>
             <meta charset="UTF-8">
             <title>Số điện thoại để liên hệ với Rừng Khoái</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
               @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
               * { margin:0; padding:0; box-sizing:border-box; font-family: 'Inter', sans-serif; }
-              html, body { height: 100%; display: flex; justify-content: center; align-items: center; background: #f5f5f5; }
-              h1 { font-size: 1.75rem; color: #054219; margin-bottom: 16px; }
-              .container { text-align: center; background: #fff; padding: 40px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); max-width: 360px; width: 90%; animation: fadeIn 0.5s ease-in-out; }
-              .phone-number { font-size: 2.5rem; font-weight: 700; color: #1f2937; margin: 24px 0; animation: pulse 1.5s infinite; display: inline-block; }
-              .call-button { display: inline-block; background: #10b981; color: #fff; font-size: 1.25rem; font-weight: 600; padding: 16px 32px; border-radius: 8px; text-decoration: none; transition: background 0.3s, transform 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-              .call-button:hover { background: #059669; transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.15); }
-              .call-button:active { transform: translateY(0); box-shadow: 0 3px 8px rgba(0,0,0,0.1); }
-              .debug { margin-top: 24px; text-align: left; font-size: 0.875rem; color: #6b7280; max-height: 200px; overflow-y: auto; background: #f9fafb; padding: 12px; border-radius: 6px; }
-              @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+              html, body { height: 100%; min-height: 100vh; background: linear-gradient(135deg, #e0f7fa 0%, #f5f5f5 100%); }
+              body { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+              .container {
+                text-align: center;
+                background: #fff;
+                padding: 32px 24px;
+                border-radius: 16px;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+                max-width: 400px;
+                width: 100%;
+                animation: fadeIn 0.5s ease-in-out;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+              }
+              h1 {
+                font-size: 2rem;
+                color: #054219;
+                margin-bottom: 18px;
+                font-weight: 700;
+                line-height: 1.2;
+              }
+              .phone-number {
+                font-size: 2.2rem;
+                font-weight: 700;
+                color: #1f2937;
+                margin: 20px 0;
+                animation: pulse 1.5s infinite;
+                display: inline-block;
+                letter-spacing: 2px;
+              }
+              .call-button {
+                display: inline-block;
+                background: linear-gradient(90deg, #10b981 60%, #059669 100%);
+                color: #fff;
+                font-size: 1.15rem;
+                font-weight: 600;
+                padding: 14px 32px;
+                border-radius: 10px;
+                text-decoration: none;
+                transition: background 0.3s, transform 0.2s;
+                box-shadow: 0 4px 16px rgba(16,185,129,0.12);
+                margin-top: 10px;
+              }
+              .call-button:hover {
+                background: linear-gradient(90deg, #059669 60%, #10b981 100%);
+                transform: translateY(-2px) scale(1.04);
+                box-shadow: 0 6px 20px rgba(16,185,129,0.18);
+              }
+              .call-button:active {
+                transform: translateY(0) scale(1);
+                box-shadow: 0 3px 8px rgba(16,185,129,0.10);
+              }
+              @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.07); } 100% { transform: scale(1); } }
               @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+              @media (max-width: 600px) {
+                .container {
+                  padding: 18px 8px;
+                  max-width: 98vw;
+                  border-radius: 10px;
+                }
+                h1 {
+                  font-size: 1.25rem;
+                  margin-bottom: 12px;
+                }
+                .phone-number {
+                  font-size: 1.5rem;
+                  margin: 14px 0;
+                }
+                .call-button {
+                  font-size: 1rem;
+                  padding: 10px 18px;
+                  border-radius: 8px;
+                }
+              }
             </style>
           </head>
           <body>
             <div class="container">
-              <h1>📞 Liên hệ với </br> Rừng Khoái</h1>
+              <h1>📞 Liên hệ với<br>Rừng Khoái</h1>
               <div class="phone-number">${randomPhone}</div>
               <a class="call-button" href="tel:${randomPhone}">Nhấn để gọi</a>
-              
             </div>
             <!--div class="debug"><pre>${STATUS.join("\n")}</pre></div-->
           </body>
